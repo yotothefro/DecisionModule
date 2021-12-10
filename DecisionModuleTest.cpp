@@ -1,68 +1,94 @@
 #include <M5Stack.h>
 
-typedef enum {                          //list of different states, needs a __LAST_STATE so that the loop can be terminated
-  K9, K8, K7, K6, K5, K4, K3, K2, K1, 
-  __LAST_STATE
+#define STRESS_LENGTH 8
+#define STRESS_JUMP 25   //TODO: test
+#define ZERO_RANGE_POS 5
+#define ZERO_RANGE_NEG -5
+
+int stresses[STRESS_LENGTH];        //array of stress levels, to be filled out (currently a list of heartbeats)
+int differences[STRESS_LENGTH-1];   //change in stress levels between each element
+int curr_arr = 0;                   //current array to be filled
+int dS_avg = 0;                     //average change in stress
+int Amps[5] = {10, 20, 30, 40, 50}; //frequencies and amplitudes for each region
+int Freqs[5] = {20, 35, 50, 65, 80};    //global variables
+
+
+
+typedef struct K_REGIONS_INFO {             //struct of information about the current region
+  int freq;              //what you can use to go to the next state
+  int amp;
+  struct K_REGIONS_INFO *next_state;  //pointer to next state
 } K_REGIONS;
 
-typedef struct {             //struct of information about the current and next regions
-  K_REGIONS state;
-  values *tokens;              //what you can use to go to the next state
-  K_REGIONS next_state;
-} K_REGIONS_INFO;
+  K_REGIONS K1 = {Amps[0], Freqs[0], &K1};
+  K_REGIONS K2 = {Amps[0], Freqs[1], &K1};
+  K_REGIONS K3 = {Amps[0], Freqs[2], &K2};  
+  K_REGIONS K4 = {Amps[1], Freqs[2], &K3};  
+  K_REGIONS K5 = {Amps[2], Freqs[2], &K4};
+  K_REGIONS K6 = {Amps[2], Freqs[3], &K5};
+  K_REGIONS K7 = {Amps[3], Freqs[3], &K6};  
+  K_REGIONS K8 = {Amps[4], Freqs[3], &K7};
+  K_REGIONS K9 = {Amps[4], Freqs[4], &K8};
 
-struct values {
-  int F, A;
-  int S_opt;    //is the stress value optimal for current region
-}; 
-typedef struct values values;
+static K_REGIONS *state_machine[] = {&K9, &K8, &K7, &K6, &K5, &K4, &K3, &K2, &K1};
 
-int run(K_REGIONS start_state, K_REGIONS_INFO *state_machine, int K_curr) {
-  K_REGIONS_INFO *p = state_machine;         //main loop, based on the start state, current state, and the K region (cargo)
-  K_REGIONS current_state = start_state;
-  K_REGIONS_INFO *found;
-  int k = K_curr;
+K_REGIONS *curr_state = state_machine[0];
 
-  while (k!=1) {
-      found = NULL;
-      p = state_machine; 
-      while (p->state != __LAST_STATE) {    //check if we are in the last state (end if true)
-        if (p->state == current_state) {    //check if the state is an entry for the current state
-          if (p->tokens->F == && p->tokens->A == && p->tokens->S_opt == 1)    //main conditions for moving to next state
-        }
-      }
+int run(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dS_avg) {
+  if(dS_avg >= STRESS_JUMP) {       //if jump is bigger than a threshold, go to K9
+      curr_state = state_machine[0];
   }
+  else if(dS_avg < ZERO_RANGE_POS | dS_avg > ZERO_RANGE_NEG) {  //if in between thresholds go to next state
+    curr_state = curr_state -> next_state;
+  }
+
+  Serial1.write(curr_state->freq);
+  Serial2.write(curr_state->amp);
+  return 1;
 }
 
 
 void setup() {
   M5.begin();
-  M5.Power.begin();
+  M5.Power.begin();           //basic setup
   Serial1.begin(9600,SERIAL_8N1, 3, 1);
   Serial2.begin(9600,SERIAL_8N1, 16, 17);
-  M5.Lcd.print("Test");
-
-  k_init = 9;
-    
+  M5.Lcd.print("Test"); 
+  //code.work = true;
+  
 }
+
 
 void loop() {
    while (Serial1.available()&&Serial2.available()) {
     int Cry = Serial1.read();
     int Heart = Serial2.read();
-    M5.Lcd.clear(BLACK);
+    M5.Lcd.clear(BLACK);         //basic communication
     M5.Lcd.setCursor(0,0);
     M5.Lcd.print("Recieved: \n");
     M5.Lcd.print(Cry);
     M5.Lcd.print("\n");
     M5.Lcd.print(Heart);
-    int sum = Cry+Heart;          //read values from previous devices
 
+    stresses[curr_arr] = Heart;
+    int sum = 0;
 
-    M5.Lcd.print("\n");
-    M5.Lcd.print("Sending value:\n");
-    M5.Lcd.print(sum);
-    Serial1.write(sum);
-    delay(10);
+    for (int i = 1; i < STRESS_LENGTH; i++)     //calculates the stresslevel differences
+    {
+      differences[i] = stresses[i]-stresses[i-1];
+      sum += differences[i]-1;
+    }
+       
+    dS_avg = sum/STRESS_LENGTH;     //calculate average change in stress (first parameter)
+    
+    run(curr_state, state_machine, dS_avg);    //main calculations, returns 1,0,-1 depending on result (dgaf)
+
+    if (curr_arr==STRESS_LENGTH-1) {    //iterate through array
+      curr_arr=0;
+    }
+    else {
+      curr_arr++;
+    }
+    delay(10); 
   }
 }
