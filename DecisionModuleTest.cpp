@@ -36,15 +36,22 @@ K_REGIONS *curr_state = state_machine[0];
 
 int run(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dS_avg) {
   if(dS_avg >= STRESS_JUMP) {       //if jump is bigger than a threshold, go to K9
-      curr_state = state_machine[0];
+    curr_state = state_machine[0];
+    Serial1.write(curr_state->freq);
+    Serial2.write(curr_state->amp);
+    return 1;
   }
   else if(dS_avg < ZERO_RANGE_POS | dS_avg > ZERO_RANGE_NEG) {  //if in between thresholds go to next state
     curr_state = curr_state -> next_state;
+    Serial1.write(curr_state->freq);
+    Serial2.write(curr_state->amp);
+    return 1;
   }
-
-  Serial1.write(curr_state->freq);
-  Serial2.write(curr_state->amp);
-  return 1;
+  else {
+    Serial1.write(curr_state->freq);
+    Serial2.write(curr_state->amp);
+    return 0;
+  }  
 }
 
 
@@ -72,16 +79,30 @@ void loop() {
 
     stresses[curr_arr] = Heart;
     int sum = 0;
+    int counter = 0;      //how many differences were calculated
 
     for (int i = 1; i < STRESS_LENGTH; i++)     //calculates the stresslevel differences
     {
-      differences[i] = stresses[i]-stresses[i-1];
-      sum += differences[i]-1;
+      if (stresses[i] !=0 && stresses[i-1] != 0) {    //if neither term is 0 calc difference
+        differences[i] = stresses[i]-stresses[i-1];
+        sum += differences[i-1];
+        counter++;
+      } 
     }
        
-    dS_avg = sum/STRESS_LENGTH;     //calculate average change in stress (first parameter)
+    dS_avg = sum/counter;     //calculate average change in stress (first parameter)
     
-    run(curr_state, state_machine, dS_avg);    //main calculations, returns 1,0,-1 depending on result (dgaf)
+    if (ds_avg != 0) {  //only run the next_state check if we have a measured change in stress
+      int clear_arr = run(curr_state, state_machine, dS_avg);    //main calculations
+    }
+    
+    if (clear_arr==1) {
+      for (int i = 0; i < STRESS_LENGTH; i++) //if 1 is returned from run, clear array 
+      {                                       //this allows for accurate movements
+        stresses[i] = 0;
+      }
+      
+    }
 
     if (curr_arr==STRESS_LENGTH-1) {    //iterate through array
       curr_arr=0;
