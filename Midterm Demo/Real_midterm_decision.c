@@ -93,7 +93,7 @@ void loop() {
       M5.Lcd.println(dS_avg);
     }
     else {
-      M5.Lcd.println("NA\n");
+      M5.Lcd.println("_NA_\n");
     }
     if (dS_avg != 0) {  //only run the next_state check if we have a measured change in stress
       clear_arr = run(curr_state, state_machine, dS_avg);    //main calculations
