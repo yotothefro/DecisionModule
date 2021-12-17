@@ -2,13 +2,14 @@
 
 #define STRESS_LENGTH 8
 #define STRESS_JUMP 25   //TODO: test
-#define ZERO_RANGE_POS 5
-#define ZERO_RANGE_NEG -5
+#define ZERO_RANGE_POS 50
+#define ZERO_RANGE_NEG -50
 
 int stresses[STRESS_LENGTH];        //array of stress levels, to be filled out (currently a list of heartbeats)
 int differences[STRESS_LENGTH-1];   //change in stress levels between each element
 int curr_arr = 0;                   //current array to be filled
 int dS_avg = 0;                     //average change in stress
+int clear_arr=0;
 int Amps[5] = {10, 20, 30, 40, 50}; //frequencies and amplitudes for each region
 int Freqs[5] = {20, 35, 50, 65, 80};    //global variables
 
@@ -37,19 +38,13 @@ K_REGIONS *curr_state = state_machine[0];
 int run(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dS_avg) {
   if(dS_avg >= STRESS_JUMP) {       //if jump is bigger than a threshold, go to K9
     curr_state = state_machine[0];
-    Serial1.write(curr_state->freq);
-    Serial2.write(curr_state->amp);
     return 1;
   }
   else if(dS_avg < ZERO_RANGE_POS | dS_avg > ZERO_RANGE_NEG) {  //if in between thresholds go to next state
     curr_state = curr_state -> next_state;
-    Serial1.write(curr_state->freq);
-    Serial2.write(curr_state->amp);
     return 1;
   }
-  else {
-    Serial1.write(curr_state->freq);
-    Serial2.write(curr_state->amp);
+  else {\
     return 0;
   }  
 }
@@ -61,21 +56,24 @@ void setup() {
   Serial1.begin(9600,SERIAL_8N1, 3, 1);
   Serial2.begin(9600,SERIAL_8N1, 16, 17);
   M5.Lcd.print("Test"); 
+
+    M5.Lcd.setTextSize(3);
   //code.work = true;
   
 }
 
 
 void loop() {
-   while (Serial1.available()&&Serial2.available()) {
+  if (Serial2.available()) {
     int Cry = Serial1.read();
     int Heart = Serial2.read();
     M5.Lcd.clear(BLACK);         //basic communication
     M5.Lcd.setCursor(0,0);
-    M5.Lcd.print("Recieved: \n");
+    M5.Lcd.print("Recieved (C,H): \n(");
     M5.Lcd.print(Cry);
-    M5.Lcd.print("\n");
+    M5.Lcd.print(",");
     M5.Lcd.print(Heart);
+    M5.Lcd.println(")\n");
 
     stresses[curr_arr] = Heart;
     int sum = 0;
@@ -89,11 +87,16 @@ void loop() {
         counter++;
       } 
     }
-       
-    dS_avg = sum/counter;     //calculate average change in stress (first parameter)
-    
-    if (ds_avg != 0) {  //only run the next_state check if we have a measured change in stress
-      int clear_arr = run(curr_state, state_machine, dS_avg);    //main calculations
+    M5.Lcd.println("dS_avg: ");
+    if (counter !=0) {
+      dS_avg = sum/counter;     //calculate average change in stress (first parameter)
+      M5.Lcd.println(dS_avg);
+    }
+    else {
+      M5.Lcd.println("NA\n");
+    }
+    if (dS_avg != 0) {  //only run the next_state check if we have a measured change in stress
+      clear_arr = run(curr_state, state_machine, dS_avg);    //main calculations
     }
     
     if (clear_arr==1) {
@@ -103,6 +106,14 @@ void loop() {
       }
       
     }
+
+    Serial1.write(curr_state->freq);
+    Serial2.write(curr_state->amp);
+    M5.Lcd.print("Sending (F,A):\n(");
+    M5.Lcd.print(curr_state->freq);
+    M5.Lcd.print(",");
+    M5.Lcd.print(curr_state->amp);
+    M5.Lcd.println(")");
 
     if (curr_arr==STRESS_LENGTH-1) {    //iterate through array
       curr_arr=0;
