@@ -11,12 +11,13 @@ int curr_arr = 0;                   //current array to be filled
 int dS_avg = 0;                     //average change in stress
 int Amps[5] = {10, 20, 30, 40, 50}; //frequencies and amplitudes for each region
 int Freqs[5] = {20, 35, 50, 65, 80};    //global variables
+int clear_arr = 0;
 
 
 
 typedef struct K_REGIONS_INFO {             //struct of information about the current region
-  int freq;              //what you can use to go to the next state
-  int amp;
+  int amp;              //what you can use to go to the next state
+  int freq;
   struct K_REGIONS_INFO *next_state;  //pointer to next state
 } K_REGIONS;
 
@@ -92,7 +93,7 @@ void loop() {
        
     dS_avg = sum/counter;     //calculate average change in stress (first parameter)
     
-    if (ds_avg != 0) {  //only run the next_state check if we have a measured change in stress
+    if (dS_avg != 0) {  //only run the next_state check if we have a measured change in stress
       int clear_arr = run(curr_state, state_machine, dS_avg);    //main calculations
     }
     
