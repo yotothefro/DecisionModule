@@ -11,6 +11,7 @@ int curr_arr = 0;                   //current array to be filled
 int dS_avg = 0;                     //average change in stress
 int Amps[5] = {10, 20, 30, 40, 50}; //frequencies and amplitudes for each region
 int Freqs[5] = {20, 35, 50, 65, 80};    //global variables
+int clear_array = 0;
 
 
 
