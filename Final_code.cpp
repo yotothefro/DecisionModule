@@ -10,12 +10,13 @@ int crying_amp[STRESS_LENGTH] = {'\0'};
 int h_differences[STRESS_LENGTH] = {'\0'}; // change in stress levels between each element
 int c_differences[STRESS_LENGTH] = {'\0'};
 int curr_arr = 1;                              // current array to be filled
-int dS_avg = 0;                                // average change in stress
+int dH_avg = 0;                                // average change in HR
+int dC_avg = 0;                                // average change in CA
 int clear_arr = 0;
 int Amps[5] = {10, 20, 30, 40, 50};  // frequencies and amplitudes for each region
 int Freqs[5] = {20, 35, 50, 65, 80}; // global variables
 int counter = 0;                     // how many differences were calculated
-int state_int = 9;
+int state_int = 9;                   //current state
 
 // struct of information about the current region
 // what you can use to go to the next state
@@ -40,10 +41,10 @@ static K_REGIONS *state_machine[] = {&K9, &K8, &K7, &K6, &K5, &K4, &K3, &K2, &K1
 
 K_REGIONS *curr_state = state_machine[0];
 
-int runHeart(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dS_avg)
+int runHeart(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dH_avg)
 {
   // if big jump go to next state
-  if (dS_avg < NEXT_STATE_CHECK)
+  if (dH_avg < NEXT_STATE_CHECK)
   { 
     curr_state = curr_state->next_state;
     state_int = state_int - 1;
@@ -107,7 +108,7 @@ void loop()
         return;
       }
 
-      M5.Lcd.println("dS_avg: ");
+      M5.Lcd.println("dH_avg: ");
 
       if (heart_rates[curr_arr] == 0)
       {
@@ -119,11 +120,11 @@ void loop()
         int sum = 0;
         for (int i = 0; i < curr_arr; i++) 
         {
-          sum = sum + h_differences;
+          sum = sum + h_differences[i];
         }
         // calculate average change in stress (first parameter)
-        dS_avg = sum / curr_arr; 
-        M5.Lcd.println(dS_avg);
+        dH_avg = sum / curr_arr; 
+        M5.Lcd.println(dH_avg);
       }
       //take average of whole array
       else if (curr_arr > STRESS_LENGTH)
@@ -131,10 +132,10 @@ void loop()
         int sum = 0;
         for (int i = 0; i < STRESS_LENGTH; i++)    
         {
-          sum = sum + h_differences;
+          sum = sum + h_differences[i];
         }
-        dS_avg = sum / STRESS_LENGTH;
-        M5.Lcd.println(dS_avg);
+        dH_avg = sum / STRESS_LENGTH;
+        M5.Lcd.println(dH_avg);
       }
        // only run the next_state check if we have a measured change in stress
 
@@ -143,9 +144,9 @@ void loop()
         goPanic(curr_state, state_machine);
         clear_arr = 1;
       }
-      else if (dS_avg != 0)
+      else if (dH_avg != 0)
       {                                    
-        clear_arr = runHeart(curr_state, state_machine, dS_avg); 
+        clear_arr = runHeart(curr_state, state_machine, dH_avg); 
       }
 
       // if 1 is returned from runHeart, clear everything (moved to new state so need new calculations)
@@ -156,7 +157,7 @@ void loop()
           heart_rates[i] = 0;
         }
         curr_arr = 1;
-        dS_avg = 0;
+        dH_avg = 0;
         clear_arr = 0;
       }
       //printing and writing to the motor module
@@ -180,54 +181,54 @@ void loop()
       if (Heart >= HEART_PANIC)
       { 
         goPanic(curr_state, state_machine);
-        state_int = 9;
+        state_int = 9; 
       }
 
-      if (crying_amp[curr_arr] != 0 && heart_rates[curr_arr - 1] != 0)
+      if (crying_amp[curr_arr] != 0 && crying_amp[curr_arr - 1] != 0)
       {                                                                                                                                                                                                                                   //calculates the stresslevel differences
         c_differences[(curr_arr - 1) % STRESS_LENGTH] = crying_amp[curr_arr % STRESS_LENGTH] - crying_amp[(curr_arr - 1) % STRESS_LENGTH];
       }
-
-      M5.Lcd.println("dS_avg: ");
-
-      if (crying_amp[curr_arr] == 0)
+      else      
       {
-        M5.Lcd.println("_NA_");
+        return;
       }
-      else if (curr_arr <= STRESS_LENGTH)
+
+      M5.Lcd.println("dC_avg: ");
+
+      if (curr_arr <= STRESS_LENGTH)
       {
         int sum = 0;
         for (int i = 0; i < curr_arr; i++)    
         {
-          sum = sum + c_differences;
+          sum = sum + c_differences[i];
         }
-        dS_avg = sum / curr_arr;
-        M5.Lcd.println(dS_avg);
+        dC_avg = sum / curr_arr;
+        M5.Lcd.println(dC_avg);
       }
       else if (curr_arr > STRESS_LENGTH)
       {
         int sum = 0;
         for (int i = 0; i < STRESS_LENGTH; i++)    
         {
-          sum = sum + c_differences;
+          sum = sum + c_differences[i];
         }
-        dS_avg = sum / STRESS_LENGTH;
-        M5.Lcd.println(dS_avg);
+        dC_avg = sum / STRESS_LENGTH;
+        M5.Lcd.println(dC_avg);
       }
 
-      if (dS_avg != 0)
+      if (dC_avg != 0)
       {                                                          // only run the next_state check if we have a measured change in stress
-        clear_arr = runHeart(curr_state, state_machine, dS_avg); // main calculations
+        clear_arr = runHeart(curr_state, state_machine, dC_avg); // main calculations
       }
 
       if (clear_arr == 1)
       {
         for (int i = 0; i < STRESS_LENGTH; i++) // if 1 is returned from runHeart, clear array
         {                                       // this allows for accurate movements
-          heart_rates[i] = 0;
+          crying_amp[i] = 0;
         }
         curr_arr = 1;
-        dS_avg = 0;
+        dC_avg = 0;
         clear_arr = 0;
       }
 
@@ -241,7 +242,7 @@ void loop()
 
       curr_arr++;
 
-      delay(500);
+      delay2500);
     }
   }
 }
