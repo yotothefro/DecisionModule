@@ -3,7 +3,7 @@
 
 #define STRESS_LENGTH 5
 #define NEXT_STATE_CHECK 15
-#define HEART_PANIC 180 // TODO: TEST
+#define HEART_PANIC 210 // TODO: TEST
 
 int heart_rates[STRESS_LENGTH] = {'\0'}; // array of stress levels, to be filled out (currently a list of heartbeats)
 int crying_amp[STRESS_LENGTH] = {'\0'};
@@ -105,6 +105,7 @@ void loop()
       //if we measure zeros, return to next loop
       else      
       {
+        curr_arr = curr_arr + 1; 
         return;
       }
 
