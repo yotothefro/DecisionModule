@@ -46,7 +46,7 @@ int run(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dS_avg)
     curr_state = curr_state -> next_state;
     return 1;
   }
-  else {\
+  else {
     return 0;
   }  
 }
