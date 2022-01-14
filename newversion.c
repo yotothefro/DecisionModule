@@ -1,12 +1,12 @@
 #include <M5Stack.h>
 //#include <esptool>
 
-#define STRESS_LENGTH 50
+#define STRESS_LENGTH 8
 #define STRESS_JUMP 25   //TODO: test
 #define ZERO_RANGE_POS 50
 #define ZERO_RANGE_NEG -50
 
-int stresses[STRESS_LENGTH] = { '\0' };        //array of stress levels, to be filled out (currently a list of heartbeats)
+int heart_rates[STRESS_LENGTH] = { '\0' };        //array of stress levels, to be filled out (currently a list of heartbeats)
 int differences[STRESS_LENGTH-1] = { '\0' };   //change in stress levels between each element
 int curr_arr = 0;                   //current array to be filled
 int dS_avg = 0;                     //average change in stress
@@ -14,7 +14,6 @@ int clear_arr=0;
 int Amps[5] = {10, 20, 30, 40, 50}; //frequencies and amplitudes for each region
 int Freqs[5] = {20, 35, 50, 65, 80};    //global variables
 int counter = 0;      //how many differences were calculated
-
 
 
 typedef struct K_REGIONS_INFO {             //struct of information about the current region
@@ -37,7 +36,7 @@ static K_REGIONS *state_machine[] = {&K9, &K8, &K7, &K6, &K5, &K4, &K3, &K2, &K1
 
 K_REGIONS *curr_state = state_machine[0];
 
-int run(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dS_avg) {
+int runHeart(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dS_avg) {
   if(dS_avg >= STRESS_JUMP) {       //if jump is bigger than a threshold, go to K9
     curr_state = state_machine[0];
     return 1;
@@ -72,23 +71,34 @@ void loop() {
     int Heart = Serial2.read();
     M5.Lcd.clear(BLACK);         //basic communication
     M5.Lcd.setCursor(0,0);
-    M5.Lcd.print("Recieved (C,H): \n(");
+    M5.Lcd.print("Received (C,H): \n(");
     M5.Lcd.print(Cry);
     M5.Lcd.print(",");
     M5.Lcd.print(Heart);
     M5.Lcd.println(")\n");
 
-    stresses[curr_arr%STRESS_LENGTH] = Heart; 
-    if(curr_arr != 0) {                                                                                                  //calculates the stresslevel differences
-      differences[(curr_arr-1)%STRESS_LENGTH] = stresses[curr_arr%STRESS_LENGTH]-stresses[(curr_arr-1)%STRESS_LENGTH];   //adds new difference to array
-    }
+//TODO: discrete values, communicate with heartbeat what the range should be. If we get accurate values, don't need to average out
+//      jump greater than X bpm, go panic (like now)
+//      same structure, just change conditions
+//      keep same array structure, adapt to new inff
+//      check the clear array condition (doesn't set to 0 after)
+//TODO: add condition for crying
+//      shorter clock for crying as the change is immediate
 
+
+    heart_rates[curr_arr%STRESS_LENGTH] = Heart; 
+
+    if(curr_arr != 0) {                                                                                                  //calculates the stresslevel differences
+      differences[(curr_arr-1)%STRESS_LENGTH] = heart_rates[curr_arr%STRESS_LENGTH]-heart_rates[(curr_arr-1)%STRESS_LENGTH];  //adds new difference to array
+    }
     for (int i = 0; i < STRESS_LENGTH; i++)     
     {
       sum += differences[i]; 
     }
 
-    
+
+
+
     M5.Lcd.println("dS_avg: ");
     if(curr_arr == 0) {
         M5.Lcd.println("_NA_");
@@ -103,15 +113,14 @@ void loop() {
     }
 
     if (dS_avg != 0) {  //only run the next_state check if we have a measured change in stress
-      clear_arr = run(curr_state, state_machine, dS_avg);    //main calculations
+      clear_arr = runHeart(curr_state, state_machine, dS_avg);    //main calculations
     }
     
     if (clear_arr==1) {
-      for (int i = 0; i < STRESS_LENGTH; i++) //if 1 is returned from run, clear array 
+      for (int i = 0; i < STRESS_LENGTH; i++) //if 1 is returned from runHeart, clear array 
       {                                       //this allows for accurate movements
-        stresses[i] = 0;
+        heart_rates[i] = 0;
       }
-      
     }
 
     Serial1.write(curr_state->freq);
@@ -125,6 +134,6 @@ void loop() {
     curr_arr++;
     
     
-    delay(10); 
+    delay(500); 
   }
 }
