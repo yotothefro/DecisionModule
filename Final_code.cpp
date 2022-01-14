@@ -41,7 +41,7 @@ static K_REGIONS *state_machine[] = {&K9, &K8, &K7, &K6, &K5, &K4, &K3, &K2, &K1
 
 K_REGIONS *curr_state = state_machine[0];
 
-int runHeart(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dH_avg)
+int goNext(K_REGIONS_INFO *curr_state, K_REGIONS_INFO *state_machine[], int dH_avg)
 {
   // if big jump go to next state
   if (dH_avg < NEXT_STATE_CHECK)
@@ -77,6 +77,12 @@ void loop()
 {
   if (Serial2.available())
   {
+    if (state_int == 9) 
+    {
+      delay(8000);
+      goNext(curr_state, state_machine);
+      return;
+    }
     int Cry = Serial1.read();
     int Heart = Serial2.read();
     M5.Lcd.clear(BLACK); 
@@ -147,10 +153,10 @@ void loop()
       }
       else if (dH_avg != 0)
       {                                    
-        clear_arr = runHeart(curr_state, state_machine, dH_avg); 
+        clear_arr = goNext(curr_state, state_machine, dH_avg); 
       }
 
-      // if 1 is returned from runHeart, clear everything (moved to new state so need new calculations)
+      // if 1 is returned from goNext, clear everything (moved to new state so need new calculations)
       if (clear_arr == 1)
       {
         for (int i = 0; i < STRESS_LENGTH; i++) 
@@ -219,12 +225,12 @@ void loop()
 
       if (dC_avg != 0)
       {                                                          // only run the next_state check if we have a measured change in stress
-        clear_arr = runHeart(curr_state, state_machine, dC_avg); // main calculations
+        clear_arr = goNext(curr_state, state_machine, dC_avg); // main calculations
       }
 
       if (clear_arr == 1)
       {
-        for (int i = 0; i < STRESS_LENGTH; i++) // if 1 is returned from runHeart, clear array
+        for (int i = 0; i < STRESS_LENGTH; i++) // if 1 is returned from goNext, clear array
         {                                       // this allows for accurate movements
           crying_amp[i] = 0;
         }
